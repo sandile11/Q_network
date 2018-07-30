@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as f
 import torch as torch
 import torch.optim as optim
+import time
 
 
 """
@@ -52,7 +53,10 @@ class myAI(object):
     def __init__(self, gateway):
         self.gateway = gateway
         self.Q = Net()
+        self.Q.load_state_dict(torch.load("default_model.tar"))
         self.Q_target = Net()
+        self.Q.load_state_dict(torch.load("default_model.tar"))
+        print("~~ successfully loaded weights ~~")
         self.database = []
         self.s1 = None
         self.s2 = None
@@ -141,7 +145,7 @@ class myAI(object):
 
         s = torch.tensor([dist_x, dist_y, my_hp, opp_hp, my_state, opp_state, my_energy, opp_energy,
                           my_spdx, my_spdy, opp_spdx, opp_spdy]).type(torch.float32)
-
+        print(s)
         return s
 
     def fetch(self, db, index_arr, sp_index):
@@ -269,9 +273,14 @@ class myAI(object):
 
             print(self.Q(obs_batch)[1])
 
+
+
             # update the target Q function
             if num_updates % self.target_update_freq == 0:
                 self.Q_target.load_state_dict(self.Q.state_dict())
+                timestr = 'model' + time.strftime("%y%m%d-%H%M%S") + '.tar'
+                torch.save(self.Q.state_dict(), timestr)
+                print("successful save of model")
 
             self.lock = False
 
