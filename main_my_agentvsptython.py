@@ -4,36 +4,42 @@ from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerPara
 from Machete import Machete
 from myAI import myAI
 
+
 def check_args(args):
-	for i in range(argc):
-		if args[i] == "-n" or args[i] == "--n" or args[i] == "--number":
-			global GAME_NUM
-			GAME_NUM = int(args[i+1])
+    for i in range(argc):
+        if args[i] == "-n" or args[i] == "--n" or args[i] == "--number":
+            global GAME_NUM
+            GAME_NUM = int(args[i + 1])
+
 
 def start_game():
-	manager.registerAI("myAI", myAI(gateway))
-	manager.registerAI("Machete", Machete(gateway))
-	print("Start game")
+    manager.registerAI("myAI", myAI(gateway))
+    manager.registerAI("Machete", Machete(gateway))
+    print("Start game")
 
-	game = manager.createGame("ZEN", "ZEN", "myAI", "Machete", GAME_NUM)
-	manager.runGame(game)
+    game = manager.createGame("ZEN", "ZEN", "myAI", "Machete", GAME_NUM)
+    manager.runGame(game)
 
-	print("After game")
-	sys.stdout.flush()
+    print("After game")
+    sys.stdout.flush()
+
 
 def close_gateway():
-	gateway.close_callback_server()
-	gateway.close()
+    gateway.close_callback_server()
+    gateway.close()
+
 
 def main_process():
-	check_args(args)
-	start_game()
-	close_gateway()
+    check_args(args)
+    start_game()
+    close_gateway()
+
 
 args = sys.argv
 argc = len(args)
-GAME_NUM = 1
-gateway = JavaGateway(gateway_parameters=GatewayParameters(port=6500), callback_server_parameters=CallbackServerParameters());
+GAME_NUM = 6
+gateway = JavaGateway(gateway_parameters=GatewayParameters(port=6500),
+                      callback_server_parameters=CallbackServerParameters());
 manager = gateway.entry_point
 
 main_process()
