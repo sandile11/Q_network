@@ -156,53 +156,13 @@ class learnedAI(object):
             self.count += 1
             return
 
-        # elif not self.cc.getSkillFlag() and self.s1 is not None and self.count == 16 :
-        #     print("------------ ")
-        #     self.s2 = self.state_data()
-        #     print("a: ", self.action)
-        #     my_r = self.s1[2] - self.s2[2]
-        #     opp_r = self.s1[3] - self.s2[3]
-        #
-        #     if my_r != 0 and opp_r != 0:
-        #         print("$$$$$$$$$$$$$$$$$ double hit $$$$$$$$$$$$$$$$")
-        #     # adjust the reward a little
-        #     r = (opp_r - my_r).item()
-        #
-        #
-        #     # if r == 0 and self.action > 2:
-        #     #     r = -
-        #
-        #     print("reward: ", r)
-        #     # if r == 0:
-        #     #     print("r: ", r)
-        #     # elif r < 0:
-        #     #     r = r / (-r)
-        #     #     print("r: ", r)
-        #     # else:
-        #     #     self.rewards_per_round = r
-        #     #     # r = r / r
-        #     #     print("r:  ", r)
-        #     #     self.rewards_per_round = r
-        #
-        #     self.save_state(self.s1, self.action, r, self.s2)
-        #     self.s1 = None
-
         self.inputKey.empty()
         self.cc.skillCancel()
 
-        eps = np.random.rand()
-
-        # if self.count == 16:
         s = self.state_data()
         out = self.Q(s)
         self.action = out.max(0)[1].item()
-        # print("a: ", self.action)
         self.cc.commandCall(self.act(self.action))
-
-
-
-
-
 
     # This part is mandatory
     class Java:
