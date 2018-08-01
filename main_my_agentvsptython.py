@@ -3,6 +3,7 @@ import sys
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters, get_field
 from Machete import Machete
 from myAI import myAI
+from learnedAI import learnedAI
 
 
 def check_args(args):
@@ -13,11 +14,12 @@ def check_args(args):
 
 
 def start_game():
-    manager.registerAI("myAI", myAI(gateway))
+    # manager.registerAI("myAI", myAI(gateway))
+    manager.registerAI("learnedAI", learnedAI(gateway))
     manager.registerAI("Machete", Machete(gateway))
     print("Start game")
 
-    game = manager.createGame("ZEN", "ZEN", "myAI", "Machete", GAME_NUM)
+    game = manager.createGame("ZEN", "ZEN", "learnedAI", "Machete", GAME_NUM)
     manager.runGame(game)
 
     print("After game")
@@ -37,7 +39,7 @@ def main_process():
 
 args = sys.argv
 argc = len(args)
-GAME_NUM = 1
+GAME_NUM = 64
 gateway = JavaGateway(gateway_parameters=GatewayParameters(port=6500),
                       callback_server_parameters=CallbackServerParameters());
 manager = gateway.entry_point
