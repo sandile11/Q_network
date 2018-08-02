@@ -141,7 +141,7 @@ class learnedAI(object):
 
         s = torch.tensor([dist_x, dist_y, my_hp, opp_hp, my_state, opp_state, my_energy, opp_energy,
                           my_spdx, my_spdy, opp_spdx, opp_spdy]).type(torch.float32)
-        # print(s)
+        print(s)
         return s
 
     def processing(self):
