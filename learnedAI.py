@@ -26,9 +26,9 @@ import time
 class Net(nn.Module):
     def __init__(self, num_inputs=12, num_actions=10):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(num_inputs, 20)
-        self.fc2 = nn.Linear(20, 20)
-        self.fc3 = nn.Linear(20, num_actions)
+        self.fc1 = nn.Linear(num_inputs, 32)
+        self.fc2 = nn.Linear(32, 32)
+        self.fc3 = nn.Linear(32, num_actions)
 
     def forward(self, x):
         x = f.relu(self.fc1(x))
@@ -56,7 +56,7 @@ class learnedAI(object):
     def __init__(self, gateway):
         self.gateway = gateway
         self.Q = Net()
-        self.Q.load_state_dict(torch.load("model180801-065642.tar"))
+        self.Q.load_state_dict(torch.load("model180806-103824.tar"))
         print("~~ successfully loaded weights ~~")
         self.database = []
         self.s1 = None
@@ -67,8 +67,8 @@ class learnedAI(object):
         self.num_updates = 0
         # setting up actions dictionary
 
-        self.actions_map = ["6 6 6", "STAND_GUARD", "BACK_STEP", "A", "B", "4 _ B",
-                            "AIR_DB", "CROUCH_FB", "STAND_FA", "STAND_D_DF_FC"]
+        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "AIR_A",
+                            "AIR_DB", "CROUCH_B", "AIR_UB", "FOR_JUMP"]
 
         # setting up my optimizer
         self.optimizer = optim.SGD(self.Q.parameters(), lr=0.01, momentum=0.0)
