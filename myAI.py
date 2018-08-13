@@ -7,7 +7,6 @@ import torch as torch
 import torch.optim as optim
 import time
 
-
 """
 ##TO DO
 
@@ -27,14 +26,13 @@ import time
     2. try to find the right hyperparameters
     3. you will have to compare this to an MCTS agent found online
     4. print out the statistics of the model so you can monitor convergence
-    5. Find a way to update the replay buffer from the back
 
 ####Sandile
     1. still to investigate the reward function
     2. found some hyperparameters not sure how they work out yet
     3. later...
     4. I have printed out some statistics, need to test it out though
-    5. I haven't done this
+
 
 #### TO DO:
     CHECK IF THE PRINTING OF THE STATISTICS IS CORRECT
@@ -47,7 +45,7 @@ import time
 
 
 class Net(nn.Module):
-    def __init__(self, num_inputs=12, num_actions=10):
+    def __init__(self, num_inputs=15, num_actions=7):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(num_inputs, 32)
         self.fc2 = nn.Linear(32, 32)
@@ -58,6 +56,7 @@ class Net(nn.Module):
         x = f.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
 
 class myAI(object):
     nn = None
@@ -77,18 +76,19 @@ class myAI(object):
     num_updates = None
     parameter_update_counter = 0
     episode_counter = 0
-
+    learning = True
     # Hyper-parameters for learning
 
-    batch_size = 16
+    batch_size = 32
     gamma = 0.99
     replay_buffer_size = 50000
-    target_update_freq = 1000
+    target_update_freq = 7000
     learning_freq = 20
     learning_rate = 0.01
-    num_actions = 10
+    num_actions = 7
     t = None
-    t_start_learning = 20000
+    t_start_learning = 30000
+    reward_scale = 30
 
     def __init__(self, gateway):
         self.gateway = gateway
@@ -103,8 +103,7 @@ class myAI(object):
         self.num_updates = 0
         # setting up actions dictionary
 
-        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "AIR_A",
-                            "AIR_DB", "CROUCH_B", "AIR_UB", "FOR_JUMP"]
+        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A", "FOR_JUMP"]
 
         # setting up my optimizer
         self.optimizer = optim.SGD(self.Q.parameters(), lr=self.learning_freq, momentum=0.0)
@@ -119,9 +118,9 @@ class myAI(object):
 
     # please define this method when you use FightingICE version 3.20 or later
     def roundEnd(self, x, y, z):
-        print(x)
-        print(y)
-        print(z)
+        # print(x)
+        # print(y)
+        # print(z)
         # print("_______TOTAL REWARDS FOR ROUND______")
         # print(self.rewards_this_round)
 
@@ -129,17 +128,11 @@ class myAI(object):
 
         if self.frameData.getRound() % 3 == 0:
             self.rewards_per_round.append(self.rewards_this_round)
-            rpr = np.array(self.rewards_per_round)
-            self.max_reward = rpr.max()
-        if self.episode_counter % 3 == 0 and self.frameData.getRound() % 3 == 0 :
+
+        if self.episode_counter % 25 == 0 and self.frameData.getRound() % 3 == 0:
             print("*************************************")
             print("Timestep: " + time.strftime("%y%m%d-%H%M%S"))
-            print(np.array(self.rewards_per_round).sum())
-            print(len(self.rewards_per_round))
-            print("mean reward (100 episodes) ", np.array(self.rewards_per_round).sum()/(len(self.rewards_per_round)*3) )
-            print("best reward: ", self.max_reward)
-            print("episodes %d" % len(self.rewards_per_round))
-            self.rewards_per_round.clear()
+            print("mean reward per game ", np.array(self.rewards_per_round) / (3))
 
     # please define this method when you use FightingICE version 4.00 or later
     def getScreenData(self, sd):
@@ -181,6 +174,7 @@ class myAI(object):
             return 3
 
     def state_data(self):
+        # All the attributes that the state comprises of
 
         my_char = self.frameData.getCharacter(self.player)
         opp_char = self.frameData.getCharacter(not self.player)
@@ -195,14 +189,18 @@ class myAI(object):
         opp_spdx = opp_char.getSpeedX()
         opp_spdy = opp_char.getSpeedY()
         my_hp = my_char.getHp()
-        opp_hp = -1*opp_char.getHp()
+        opp_hp = opp_char.getHp()
+        diff_hp = my_hp - opp_hp
+        center_x = my_char.getCenterX()
+        center_y = my_char.getCenterY()
 
         s = torch.tensor([dist_x, dist_y, my_hp, opp_hp, my_state, opp_state, my_energy, opp_energy,
-                          my_spdx, my_spdy, opp_spdx, opp_spdy]).type(torch.float32)
+                          my_spdx, my_spdy, opp_spdx, opp_spdy, diff_hp, center_x, center_y]).type(torch.float32)
 
         return s
 
     def fetch(self, db, index_arr, sp_index):
+        # fetches data from the replay buffer
         # could be faster
         data = None
         for i in range(len(index_arr)):
@@ -211,9 +209,17 @@ class myAI(object):
             else:
                 tmp = db[index_arr[i]][sp_index]
                 data = np.vstack((data, tmp))
-        # now pop out all of the sampled data out of the database
 
         return torch.tensor(data)
+
+    def get_reward(self):
+
+        my_char = self.frameData.getCharacter(self.player)
+        opp_char = self.frameData.getCharacter(not self.player)
+        my_hp = my_char.getHp()
+        opp_hp = opp_char.getHp()
+
+        return my_hp - opp_hp
 
     def processing(self):
 
@@ -229,37 +235,43 @@ class myAI(object):
             self.act_frames_counter += 1
             return
 
-        elif not self.cc.getSkillFlag() and self.s1 is not None and self.act_frames_counter == done_action:
-            # print("____________________ ")
+        elif not self.cc.getSkillFlag() and self.s1 is not None and self.act_frames_counter >= done_action:
+
+            # and self.frameData.getCharacter(self.player).isControl():
             self.s2 = self.state_data()
-            # print("a: ", self.action)
             my_r = self.s1[2] - self.s2[2]
             opp_r = self.s1[3] - self.s2[3]
             r = (opp_r - my_r).item()
             self.rewards_this_round += r
-            # print("reward: ", r)
-            # if r == 0:
-            #     r = -0.0001
-            if r <= 50:
-                self.save_state(self.s1, self.action, r, self.s2)
-                self.parameter_update_counter += 1
-                self.rewards_this_round += r
-                self.t += 1
-            self.s1 = None
 
+            # A different reward function
+
+            if r <= 75:
+                if r != 0:
+                    r = r / self.reward_scale
+
+                if self.s2[2] < self.s2[3]:
+                    r -= 0.1
+
+                    self.save_state(self.s1, self.action, r, self.s2)
+            self.parameter_update_counter += 1
+            self.rewards_this_round += r
+            self.t += 1
+        self.s1 = None
 
         self.inputKey.empty()
         self.cc.skillCancel()
 
         eps = np.random.rand()
 
-        if self.act_frames_counter == done_action:
-            # with probability of 0.1 take a random action
-            # else select with highest Q value
+        if self.act_frames_counter >= done_action:
+        # and self.frameData.getCharacter(self.player).isControl():
+        # with probability of 0.1 take a random action
+        # else select with highest Q value
             if self.t < self.t_start_learning:
                 self.action = np.random.randint(0, self.num_actions)
                 self.cc.commandCall(self.act(self.action))
-            elif eps >= 0.9:
+            elif eps >= 0.8:
                 self.action = np.random.randint(0, self.num_actions)
                 self.cc.commandCall(self.act(self.action))
             else:
@@ -273,48 +285,37 @@ class myAI(object):
         else:
             self.act_frames_counter += 1
 
-        # Starting learning if conditions allow
-        if len(self.database) == self.replay_buffer_size and self.t > self.t_start_learning\
+    # Starting learning if conditions allow
+
+        if len(self.database) == self.replay_buffer_size and self.t > self.t_start_learning \
                 and self.parameter_update_counter % self.learning_freq == 0:
-
-            print("_______________LEARNING_____________")
-
+            if self.learning:
+                print("_______________LEARNING_____________")
+                self.learning = False
             batch_indices = np.random.randint(0, self.replay_buffer_size, self.batch_size)
             dbCopy = self.database.copy()
             obs_batch = self.fetch(dbCopy, batch_indices, 0).type(torch.float32)
             rew_batch = self.fetch(dbCopy, batch_indices, 2).type(torch.float32)
             next_obs_batch = self.fetch(dbCopy, batch_indices, 3).type(torch.float32)
             current_Q_values = self.Q(obs_batch).max(1)[0].reshape(self.batch_size, 1)
-            # calculate the target's current Q values
+
             next_Q_values = self.Q_target(next_obs_batch).detach()
             next_Q_values = next_Q_values.max(1)[0].type(torch.float32)
-
-            # find the target of the current Q values
-            print("calculating target Q-values...")
-            target_Q_values = rew_batch + 0.9*next_Q_values.reshape(self.batch_size, 1)
-            print("zeroing grads and calculating loss...")
+            target_Q_values = rew_batch + self.gamma * next_Q_values.reshape(self.batch_size, 1)
             self.optimizer.zero_grad()
             loss = self.loss_fn(current_Q_values, target_Q_values)
-            print("back-propagating loss...")
             loss.backward()
-            print("updating weights...")
-            # perform parameter updates
             self.optimizer.step()
             self.num_updates += 1
             for _ in range(20):
                 self.database.pop(0)
-
             # update the target Q function
             if self.num_updates % self.target_update_freq == 0:
-
                 self.Q_target.load_state_dict(self.Q.state_dict())
-                timestr = 'trained_weights/' 'model' + time.strftime("%y%m%d-%H%M%S") + '.tar'
+                timestr = 'trained_weights/' + 'model' + time.strftime("%y%m%d-%H%M%S") + '.tar'
                 torch.save(self.Q.state_dict(), timestr)
                 print("_______________ successful save of new target Q")
 
-        if self.frameData.getRound() % 3 == 0 and self.frameData.getRemainingFramesNumber() < 20:
-            print("%%%%%% total rewards this game: ", self.rewards_this_round)
-
-    # This part is mandatory
+# This part is mandatory
     class Java:
         implements = ["aiinterface.AIInterface"]

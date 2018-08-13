@@ -5,7 +5,6 @@ import torch as torch
 import torch.optim as optim
 import time
 
-
 """
 ##TO DO
 
@@ -24,7 +23,7 @@ import time
 
 
 class Net(nn.Module):
-    def __init__(self, num_inputs=12, num_actions=10):
+    def __init__(self, num_inputs=15, num_actions=10):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(num_inputs, 32)
         self.fc2 = nn.Linear(32, 32)
@@ -56,7 +55,7 @@ class learnedAI(object):
     def __init__(self, gateway):
         self.gateway = gateway
         self.Q = Net()
-        self.Q.load_state_dict(torch.load("model180806-103824.tar"))
+        self.Q.load_state_dict(torch.load("trained_weights/model180812-131101.tar"))
         print("~~ successfully loaded weights ~~")
         self.database = []
         self.s1 = None
@@ -67,7 +66,7 @@ class learnedAI(object):
         self.num_updates = 0
         # setting up actions dictionary
 
-        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "AIR_A",
+        self.actions_map = ["FORWARD_WALK", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A",
                             "AIR_DB", "CROUCH_B", "AIR_UB", "FOR_JUMP"]
 
         # setting up my optimizer
@@ -108,7 +107,6 @@ class learnedAI(object):
         # Return the input for the current frame
         return self.inputKey
 
-
     def act(self, action):
         return self.actions_map[action]
 
@@ -138,10 +136,13 @@ class learnedAI(object):
         opp_spdy = opp_char.getSpeedY()
         my_hp = my_char.getHp()
         opp_hp = opp_char.getHp()
+        diff_hp = my_hp - opp_hp
+        center_x = my_char.getCenterX()
+        center_y = my_char.getCenterY()
 
         s = torch.tensor([dist_x, dist_y, my_hp, opp_hp, my_state, opp_state, my_energy, opp_energy,
-                          my_spdx, my_spdy, opp_spdx, opp_spdy]).type(torch.float32)
-        print(s)
+                          my_spdx, my_spdy, opp_spdx, opp_spdy, diff_hp, center_x, center_y]).type(torch.float32)
+        # print(s)
         return s
 
     def processing(self):
@@ -165,5 +166,7 @@ class learnedAI(object):
         self.cc.commandCall(self.act(self.action))
 
     # This part is mandatory
-    class Java:
-        implements = ["aiinterface.AIInterface"]
+
+
+class Java:
+    implements = ["aiinterface.AIInterface"]
