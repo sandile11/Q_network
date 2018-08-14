@@ -82,12 +82,12 @@ class myAI(object):
     batch_size = 32
     gamma = 0.99
     replay_buffer_size = 50000
-    target_update_freq = 7000
+    target_update_freq = 4000
     learning_freq = 20
     learning_rate = 0.01
     num_actions = 7
     t = None
-    t_start_learning = 30000
+    t_start_learning = 20000
     reward_scale = 30
 
     def __init__(self, gateway):
@@ -251,13 +251,14 @@ class myAI(object):
                     r = r / self.reward_scale
 
                 if self.s2[2] < self.s2[3]:
-                    r -= 0.1
+                    r -= 0.01
 
-                    self.save_state(self.s1, self.action, r, self.s2)
-            self.parameter_update_counter += 1
-            self.rewards_this_round += r
-            self.t += 1
-        self.s1 = None
+                self.save_state(self.s1, self.action, r, self.s2)
+                self.parameter_update_counter += 1
+                print(r)
+                self.rewards_this_round += r
+                self.t += 1
+            self.s1 = None
 
         self.inputKey.empty()
         self.cc.skillCancel()
