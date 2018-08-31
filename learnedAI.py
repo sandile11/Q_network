@@ -23,18 +23,17 @@ import time
 
 
 class Net(nn.Module):
-    def __init__(self, num_inputs=15, num_actions=10):
+    def __init__(self, num_inputs=16, num_actions=7):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(num_inputs, 32)
-        self.fc2 = nn.Linear(32, 32)
-        self.fc3 = nn.Linear(32, num_actions)
+        self.fc1 = nn.Linear(num_inputs, 100)
+        self.fc2 = nn.Linear(100, 100)
+        self.fc3 = nn.Linear(100, num_actions)
 
     def forward(self, x):
         x = f.relu(self.fc1(x))
         x = f.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-
 
 class learnedAI(object):
     nn = None
@@ -55,7 +54,7 @@ class learnedAI(object):
     def __init__(self, gateway):
         self.gateway = gateway
         self.Q = Net()
-        self.Q.load_state_dict(torch.load("trained_weights/model180812-131101.tar"))
+        self.Q.load_state_dict(torch.load("trained_weights/model180819-073057.tar"))
         print("~~ successfully loaded weights ~~")
         self.database = []
         self.s1 = None
@@ -66,8 +65,8 @@ class learnedAI(object):
         self.num_updates = 0
         # setting up actions dictionary
 
-        self.actions_map = ["FORWARD_WALK", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A",
-                            "AIR_DB", "CROUCH_B", "AIR_UB", "FOR_JUMP"]
+        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A" ,"FOR_JUMP"]
+
 
         # setting up my optimizer
         self.optimizer = optim.SGD(self.Q.parameters(), lr=0.01, momentum=0.0)
@@ -139,9 +138,10 @@ class learnedAI(object):
         diff_hp = my_hp - opp_hp
         center_x = my_char.getCenterX()
         center_y = my_char.getCenterY()
+        dist_wall = center_x - self.gameData.getStageWidth()
 
         s = torch.tensor([dist_x, dist_y, my_hp, opp_hp, my_state, opp_state, my_energy, opp_energy,
-                          my_spdx, my_spdy, opp_spdx, opp_spdy, diff_hp, center_x, center_y]).type(torch.float32)
+                          my_spdx, my_spdy, opp_spdx, opp_spdy, diff_hp, center_x, center_y, dist_wall]).type(torch.float32)
         # print(s)
         return s
 
@@ -168,5 +168,5 @@ class learnedAI(object):
     # This part is mandatory
 
 
-class Java:
-    implements = ["aiinterface.AIInterface"]
+    class Java:
+        implements = ["aiinterface.AIInterface"]

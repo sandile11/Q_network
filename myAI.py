@@ -45,11 +45,11 @@ import time
 
 
 class Net(nn.Module):
-    def __init__(self, num_inputs=15, num_actions=7):
+    def __init__(self, num_inputs=16, num_actions=7):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(num_inputs, 32)
-        self.fc2 = nn.Linear(32, 32)
-        self.fc3 = nn.Linear(32, num_actions)
+        self.fc1 = nn.Linear(num_inputs, 100)
+        self.fc2 = nn.Linear(100, 100)
+        self.fc3 = nn.Linear(100, num_actions)
 
     def forward(self, x):
         x = f.relu(self.fc1(x))
@@ -65,7 +65,7 @@ class myAI(object):
     s1 = None
     s2 = None
     action = None
-    act_frames_counter = 16
+    act_frames_counter = 15
     actions_map = None
     lock = False
     optimizer = None
@@ -82,9 +82,9 @@ class myAI(object):
     batch_size = 32
     gamma = 0.99
     replay_buffer_size = 50000
-    target_update_freq = 4000
+    target_update_freq = 1000
     learning_freq = 20
-    learning_rate = 0.01
+    learning_rate = 0.0001
     num_actions = 7
     t = None
     t_start_learning = 20000
@@ -103,10 +103,10 @@ class myAI(object):
         self.num_updates = 0
         # setting up actions dictionary
 
-        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A", "FOR_JUMP"]
+        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A" ,"FOR_JUMP"]
 
         # setting up my optimizer
-        self.optimizer = optim.SGD(self.Q.parameters(), lr=self.learning_freq, momentum=0.0)
+        self.optimizer = optim.SGD(self.Q.parameters(), lr=self.learning_rate, momentum=0.0)
 
     def close(self):
         pass
@@ -193,9 +193,10 @@ class myAI(object):
         diff_hp = my_hp - opp_hp
         center_x = my_char.getCenterX()
         center_y = my_char.getCenterY()
+        dist_wall = center_x - self.gameData.getStageWidth()
 
         s = torch.tensor([dist_x, dist_y, my_hp, opp_hp, my_state, opp_state, my_energy, opp_energy,
-                          my_spdx, my_spdy, opp_spdx, opp_spdy, diff_hp, center_x, center_y]).type(torch.float32)
+                          my_spdx, my_spdy, opp_spdx, opp_spdy, diff_hp, center_x, center_y, dist_wall]).type(torch.float32)
 
         return s
 
@@ -241,21 +242,19 @@ class myAI(object):
             self.s2 = self.state_data()
             my_r = self.s1[2] - self.s2[2]
             opp_r = self.s1[3] - self.s2[3]
-            r = (opp_r - my_r).item()
-            self.rewards_this_round += r
+            # r = (opp_r - my_r).item()
 
+            r = self.s2[2].item() - (self.s2[3]).item()
+            # print(r,  "----")
             # A different reward function
 
-            if r <= 75:
-                if r != 0:
-                    r = r / self.reward_scale
-
-                if self.s2[2] < self.s2[3]:
-                    r -= 0.01
+            if True:
+                # if r != 0:
+                #     r = r / self.reward_scale
 
                 self.save_state(self.s1, self.action, r, self.s2)
                 self.parameter_update_counter += 1
-                print(r)
+                # print(r)
                 self.rewards_this_round += r
                 self.t += 1
             self.s1 = None
