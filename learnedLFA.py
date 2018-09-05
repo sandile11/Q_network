@@ -2,7 +2,7 @@
 import numpy as np
 import time
 
-class my_ai_linear_func_approx(object):
+class lfa(object):
 
     s1 = None
     s2 = None
@@ -19,7 +19,9 @@ class my_ai_linear_func_approx(object):
     # Hyper-parameters for learning
 
     gamma = 0.99
-    learning_rate = 0.0000001
+
+    learning_freq = 20
+    learning_rate = 0.000001
     num_actions = 7
     t = None
     reward_scale = 30
@@ -32,12 +34,12 @@ class my_ai_linear_func_approx(object):
         self.s2 = None
         self.t = 0
         self.num_updates = 0
-        self.epsilon = 0.5
         # setting up actions dictionary
 
-        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A", "FOR_JUMP"]
+        self.actions_map = ["DASH", "STAND_GUARD", "BACK_STEP", "A", "B", "THROW_A" ,"FOR_JUMP"]
 
-        self.weights = np.random.rand(len(self.actions_map), 17)
+        self.weights = np.load('trained_weights/model180905-073410.npy')
+        print("successfully loaded numpy weights")
 
     def close(self):
         pass
@@ -58,8 +60,6 @@ class my_ai_linear_func_approx(object):
             print("*************************************")
             print("Timestep: " + time.strftime("%y%m%d-%H%M%S"))
             print("mean reward per game ", np.array(self.rewards_per_round) / (3))
-            r = np.array(self.rewards_per_round)/3
-            np.save('rewards/rewards_' + time.strftime("%y%m%d-%H%M%S") +'.npy', r)
 
     # please define this method when you use FightingICE version 4.00 or later
     def getScreenData(self, sd):
@@ -98,6 +98,7 @@ class my_ai_linear_func_approx(object):
 
     def state_data(self):
         # All the attributes that the state comprises of
+
         my_char = self.frameData.getCharacter(self.player)
         opp_char = self.frameData.getCharacter(not self.player)
         dist_x = self.frameData.getDistanceX()
@@ -140,7 +141,7 @@ class my_ai_linear_func_approx(object):
 
     def processing(self):
 
-        done_action = 16
+        done_action = 5
 
         # Just compute the input for the current frame
         if self.frameData.getEmptyFlag() or self.frameData.getRemainingFramesNumber() <= 0:
@@ -152,23 +153,6 @@ class my_ai_linear_func_approx(object):
             self.act_frames_counter += 1
             return
 
-        elif not self.cc.getSkillFlag() and self.s1 is not None and self.act_frames_counter >= done_action:
-            self.s2 = self.state_data()
-            my_r = self.s1[3] - self.s2[3]
-            opp_r = self.s1[4] - self.s2[4]
-            r = (opp_r - my_r)
-            # r /= self.reward_scale
-            Q_vals = np.array([self.Q_value(self.s2, a) for a in range(len(self.actions_map))])
-            Q_p = Q_vals.max()
-            Q = self.Q_value(self.s1, self.action)
-            print(r )
-            self.weights[self.action, :] -= self.learning_rate*(r + self.gamma*Q_p - Q)*self.s1
-            self.parameter_update_counter += 1
-            self.rewards_this_round += r * self.reward_scale
-            self.t += 1
-            self.s1 = None
-            self.s2 = None
-
         self.inputKey.empty()
         self.cc.skillCancel()
 
@@ -176,30 +160,15 @@ class my_ai_linear_func_approx(object):
 
         if self.act_frames_counter >= done_action:
             self.s1 = self.state_data()
-            if eps >= self.epsilon:
-                self.action = np.random.randint(0, self.num_actions)
-                # print(self.action)
-                self.cc.commandCall(self.act(self.action))
-            else:
-                Q_vals = np.array([self.Q_value(self.s1, a) for a in range(len(self.actions_map))])
-                self.action = Q_vals.argmax()
-                self.cc.commandCall(self.act(self.action))
-
-            if self.parameter_update_counter <= 10000:
-                self.epsilon += 0.00004
-
-            if self.parameter_update_counter == 10000:
-                print("Done with Epsilon Decay")
-
-            if self.parameter_update_counter % 2500 == 0:
-                print(self.weights)
-                timestr = 'trained_weights/' + 'model' + time.strftime("%y%m%d-%H%M%S") + '.npy'
-                np.save(timestr, self.weights)
-                print("saved a model")
-
+            Q_vals = np.array([self.Q_value(self.s1, a) for a in range(len(self.actions_map))])
+            self.action = Q_vals.argmax()
+            self.cc.commandCall(self.act(self.action))
             self.act_frames_counter = 0
         else:
             self.act_frames_counter += 1
+
+
+
 
 
 # This part is mandatory
