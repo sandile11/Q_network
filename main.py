@@ -2,16 +2,15 @@ import sys
 
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters, get_field
 from Machete import Machete
-from dqn import dqn
-from dqn_agent import dqn_agent
-from BasicBot import BasicBot
-from lfa_qlearning import lfa_qlearning
-from lfa_agent import lfa_agent
+# from dqn import dqn
+# from dqn_agent import dqn_agent
+# from BasicBot import BasicBot
+from qlfa_agent import qlfa_agent
+from qlfa_train import qlfa_train
 from dummy import dummy
-from randomai import randomai
-from MultiHead import MultiHead
-from tank_agent import tank
-from scorpion import scorpion
+# from MultiHead import MultiHead
+# from tank_agent import tank
+# from scorpion import scorpion
 
 def check_args(args):
     for i in range(argc):
@@ -24,10 +23,9 @@ def start_game():
     # manager.registerAI("dummy", dummy(gateway))
     # manager.registerAI("dqn", dqn(gateway))
     # manager.registerAI("lfa_qn", lfa_qlearning(gateway))
-    manager.registerAI("tank", tank(gateway))
-    # manager.registerAI("lfa_agent", lfa_agent(gateway))
-    # manager.registerAI("random", randomai(gateway))
-    manager.registerAI("scorpion", scorpion(gateway))
+    # manager.registerAI("tank", tank(gateway))
+    manager.registerAI("qlfa_agent", qlfa_agent(gateway))
+    # manager.registerAI("scorpion", scorpion(gateway))
     # manager.registerAI("dqn_agent", dqn_agent(gateway))
     manager.registerAI("Machete", Machete(gateway))
     # manager.registerAI("basicbot", BasicBot(gateway))
@@ -35,7 +33,7 @@ def start_game():
     # manager.registerAI("DisplayInfo", MctsAi(gateway))
     print("Start game")
 
-    game = manager.createGame("ZEN", "ZEN", "tank", "scorpion", GAME_NUM)
+    game = manager.createGame("ZEN", "ZEN", "qlfa_agent", "MctsAi", GAME_NUM)
     # game = manager.createGame("ZEN", "ZEN", "dqn_agent", "random", GAME_NUM)
     # game = manager.createGame("ZEN", "ZEN", "dqn", "Machete", GAME_NUM)
     # game = manager.createGame("ZEN", "ZEN", "Machete", "multihead", GAME_NUM)

@@ -2,15 +2,16 @@
 import numpy as np
 import time
 
-class dummy(object):
+class qlfa_train(object):
 
     s1 = None
     s2 = None
-
-    act_frames_counter = 10
+    act_frames_counter = 12
     actions_map = None
     rewards_per_round = []
+    rewards_mixed = []
     rewards_this_round = 0
+    rewards_this_round_mixed = 0
     max_reward = 0
     num_updates = None
     parameter_update_counter = 0
@@ -19,28 +20,29 @@ class dummy(object):
     # Hyper-parameters for learning
 
     gamma = 0.99
-    learning_rate = 0.00000001
-    num_actions = 6
+    learning_rate = 0.001
+    num_actions = 9
     t = None
     reward_scale = 30
 
     def __init__(self, gateway):
         self.gateway = gateway
-        print("--- dummy agent loaded ---")
+        print("~~ LFA TRAINING ~~")
         self.database = []
         self.s1 = None
         self.s2 = None
         self.t = 0
         self.num_updates = 0
-        self.epsilon = 0.6
+        self.epsilon = 0.1
         self.action = 1
-        self.action_prev = None
+        self.action_prev = 1
         # setting up actions dictionary
 
-        self.actions_map = ["DASH", "A", "B", "THROW_A", "FOR_JUMP", "THROW_B"]
-        #STAND_F_D_DFB big punch
-        #STAND_D_DF_FA
-        self.weights = np.random.rand(len(self.actions_map), 17)
+        # self.actions_map = ["DASH", "STAND_GUARD", "FOR_JUMP", "A", "B", "THROW_A", "CROUCH_B", "AIR_DB", "THROW_B"]
+        self.actions_map = ["DASH", "STAND_GUARD", "FOR_JUMP", "STAND_D_DF_FA", "STAND_D_DF_FB", "A", "B", "THROW_A",
+                    "AIR_DB", "AIR_DA"]
+        self.num_actions = len(self.actions_map)
+        self.weights = np.zeros((len(self.actions_map), 39))
 
     def close(self):
         pass
@@ -51,7 +53,23 @@ class dummy(object):
         self.cc.setFrameData(self.frameData, self.player)
 
     def roundEnd(self, x, y, z):
-        pass
+
+        if self.frameData.getRound() % 3 == 0:
+            print("episode no: ", self.episode_counter)
+            self.rewards_per_round.append(self.rewards_this_round)
+            self.rewards_mixed.append(self.rewards_this_round_mixed)
+
+        if self.episode_counter % 25 == 0 and self.frameData.getRound() % 3 == 0:
+            print("--------------------")
+            print("Timestep: " + time.strftime("%y%m%d-%H%M%S"))
+            print("mean reward per game ", np.array(self.rewards_per_round) / (3))
+            r = np.array(self.rewards_per_round)/3
+            np.save('lfa_rewards/rewards_' + time.strftime("%y%m%d-%H%M%S") +'.npy', r)
+            r = np.array(self.rewards_mixed)/3
+            np.save('lfa_rewards/mixed_rewards_' + time.strftime("%y%m%d-%H%M%S") +'.npy', r)
+
+        print("epsilon: ", self.epsilon)
+    # please define this method when you use FightingICE version 4.00 or later
 
     def getScreenData(self, sd):
         pass
@@ -67,6 +85,8 @@ class dummy(object):
         self.isGameJustStarted = True
         self.episode_counter += 1
         self.rewards_this_round = 0
+        self.rewards_this_round_mixed = 0
+
         return 0
 
     def input(self):
@@ -88,12 +108,12 @@ class dummy(object):
             return 3
 
     def state_data(self):
-        # All the attributes that the state comprises of
+            # All the attributes that the state comprises of
 
         sw = self.gameData.getStageWidth()
         sh = self.gameData.getStageHeight()
 
-        print('w = {} and h = {}'.format(sw, sh))
+        # print('w = {} and h = {}'.format(sw, sh))
 
         my_char = self.frameData.getCharacter(self.player)
         opp_char = self.frameData.getCharacter(not self.player)
@@ -119,11 +139,11 @@ class dummy(object):
         my_char_hit_y = my_char.getLeft()/sw
         opp_char_hit_x = opp_char.getRight()/sw
         opp_char_hit_y = opp_char.getLeft()/sw
-        my_char_hc = my_char.getHitCount()
-        opp_char_hc = opp_char.getHitCount()
+        my_char_hc = my_char.getHitCount()/9
+        opp_char_hc = opp_char.getHitCount()/9
         dist_wall = (my_center_x - self.gameData.getStageWidth())/sw
-        opp_act = opp_char.getAction().ordinal()
-        my_act = my_char.getAction().ordinal()
+        opp_act = opp_char.getAction().ordinal()/41
+        my_act = my_char.getAction().ordinal()/41
 
         oppProjectiles = self.frameData.getProjectilesByP2()
         myProjectiles = self.frameData.getProjectilesByP1()
@@ -140,7 +160,7 @@ class dummy(object):
             opp_proj_d1 = oppProjectiles[0].getHitDamage()/50
             opp_proj_x1 = ((oppProjectiles[0].getCurrentHitArea().getLeft() + oppProjectiles[0].getCurrentHitArea().getRight())/2)/960.0
             opp_proj_y1 = ((oppProjectiles[0].getCurrentHitArea().getTop() + oppProjectiles[0].getCurrentHitArea().getBottom())/2)/640.0
-            opp_proj_d2 = oppProjectiles[1].getHitDamage()
+            opp_proj_d2 = oppProjectiles[1].getHitDamage()/50
             opp_proj_x2 = ((oppProjectiles[1].getCurrentHitArea().getLeft() + oppProjectiles[1].getCurrentHitArea().getRight())/2)/960.0
             opp_proj_y2 = ((oppProjectiles[1].getCurrentHitArea().getTop() + oppProjectiles[1].getCurrentHitArea().getBottom())/2)/640.0
         else:
@@ -164,7 +184,7 @@ class dummy(object):
             my_proj_d1 = myProjectiles[0].getHitDamage()/50
             my_proj_x1 = ((myProjectiles[0].getCurrentHitArea().getLeft() + myProjectiles[0].getCurrentHitArea().getRight())/2)/960.0
             my_proj_y1 = ((myProjectiles[0].getCurrentHitArea().getTop() + myProjectiles[0].getCurrentHitArea().getBottom())/2)/640.0
-            my_proj_d2 = myProjectiles[1].getHitDamage()
+            my_proj_d2 = myProjectiles[1].getHitDamage()/50
             my_proj_x2 = ((myProjectiles[1].getCurrentHitArea().getLeft() + myProjectiles[1].getCurrentHitArea().getRight())/2)/960.0
             my_proj_y2 = ((myProjectiles[1].getCurrentHitArea().getTop() + myProjectiles[1].getCurrentHitArea().getBottom())/2)/640.0
         else:
@@ -182,23 +202,30 @@ class dummy(object):
                           opp_proj_d2, opp_proj_x2, opp_proj_y2, my_proj_d1, my_proj_x1, my_proj_y1,
                           my_proj_d2, my_proj_x2, my_proj_y2, opp_act, my_act])
 
-        print(s)
+        # print(s)
 
         return s
 
+    def Q_value(self, s, a):
+
+        w_a = self.weights[a, :]
+        dot_prod = np.dot(w_a, s)
+
+        return dot_prod
+
     def get_reward(self):
+        my_r = self.s1[3] - self.s2[3]
+        opp_r = self.s1[4] - self.s2[4]
+        r = (opp_r - my_r)
 
-        my_char = self.frameData.getCharacter(self.player)
-        opp_char = self.frameData.getCharacter(not self.player)
-        my_hp = my_char.getHp()
-        opp_hp = opp_char.getHp()
+        if r == 0 and self.s1[0] >= 60 and self.action_prev > 2:
+            r = -5
 
-        return my_hp - opp_hp
+        return r
 
     def processing(self):
 
         done_action = 10
-        my_char = self.frameData.getCharacter(self.player)
 
         # Just compute the input for the current frame
         if self.frameData.getEmptyFlag() or self.frameData.getRemainingFramesNumber() <= 0:
@@ -208,37 +235,60 @@ class dummy(object):
         if self.cc.getSkillFlag():
             self.inputKey = self.cc.getSkillKey()
             self.act_frames_counter += 1
-
             return
 
-        elif not self.cc.getSkillFlag() and self.s1 is not None and self.act_frames_counter == done_action:
-            self.s2 = self.state_data()
-            my_r = self.s1[3] - self.s2[3]
-            opp_r = self.s1[4] - self.s2[4]
-            r = (opp_r - my_r)
-            myhitcount = self.frameData.getCharacter(self.player).getHitCount()
+        elif not self.cc.getSkillFlag() and self.s1 is not None and self.act_frames_counter >= done_action:
 
-            if True:
-                # print("successful hit")
-                # print(self.frameData.getDistanceX())
-                print("r {:.2f} a: {:}".format(r, self.action_prev))
-            self.t += 1
-            self.s1 = None
-            self.s2 = None
+            self.s2 = self.state_data()
+            r = self.get_reward()
+
+            if r <= 100:
+                Q_vals = np.array([self.Q_value(self.s2, a) for a in range(len(self.actions_map))])
+                Q_p = Q_vals.max()
+                Q = self.Q_value(self.s1, self.action_prev)
+                # print(Q)
+                self.weights[self.action_prev, :] += self.learning_rate*(r + self.gamma*Q_p - Q)*self.s1
+                self.parameter_update_counter += 1
+                if r > 0:
+                    self.rewards_this_round += r
+                self.rewards_this_round_mixed += r
+                self.t += 1
+                self.s1 = None
+                self.s2 = None
 
         self.inputKey.empty()
         self.cc.skillCancel()
 
-        if self.act_frames_counter == done_action:
+        eps = np.random.rand()
+
+        if self.act_frames_counter >= done_action:
             self.s1 = self.state_data()
             self.action_prev = self.action
-            self.action = np.random.randint(0, self.num_actions)
+            if eps >= self.epsilon:
+                self.action = np.random.randint(0, self.num_actions)
+                # print(self.action)
+                self.cc.commandCall(self.act(self.action))
+            else:
+                Q_vals = np.array([self.Q_value(self.s1, a) for a in range(len(self.actions_map))])
+                self.action = Q_vals.argmax()
+                self.cc.commandCall(self.act(self.action))
 
-            self.cc.commandCall(self.act(self.action))
+            if self.epsilon < 0.9:
+                self.epsilon += 0.000006
+            else:
+                self.epsilon = 0.9
+            if self.parameter_update_counter == 150000:
+                print("Done with Epsilon Decay")
+
+            if self.parameter_update_counter % 5000 == 0 and  self.parameter_update_counter != 0:
+                print(self.weights)
+                timestr = 'trained_weights/lfa_weights/' + 'model' + time.strftime("%y%m%d-%H%M%S") + '.npy'
+                np.save(timestr, self.weights)
+                print("----saved a model----")
+
             self.act_frames_counter = 0
         else:
             self.act_frames_counter += 1
-
 
 # This part is mandatory
     class Java:

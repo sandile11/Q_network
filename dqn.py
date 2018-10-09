@@ -1,5 +1,4 @@
 import copy
-
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as f
@@ -177,7 +176,7 @@ class dqn(object):
         myProjectiles = self.frameData.getProjectilesByP1()
 
         if len(oppProjectiles) == 1:
-            opp_proj_d1 = oppProjectiles[0].getHitDamage() / 50
+                opp_proj_d1 = oppProjectiles[0].getHitDamage() / 50
             opp_proj_x1 = ((oppProjectiles[0].getCurrentHitArea().getLeft() + oppProjectiles[
                 0].getCurrentHitArea().getRight()) / 2) / 960.0
             opp_proj_y1 = ((oppProjectiles[0].getCurrentHitArea().getTop() + oppProjectiles[
